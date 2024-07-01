@@ -1,0 +1,4 @@
+Requests==2.31.0
+robobrowser==0.5.3
+werkzeug==0.16.1
+html5lib==1.1
