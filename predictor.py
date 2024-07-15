@@ -1,7 +1,7 @@
 class Predictor():
 
     DRAW_THRESHOLD = 2.25 # Not to be used in knock out phase if result after extra time + penalties is used in the rules
-    BIG_WIN_THRESHOLD = 8.0 # 5.25 for group stage, 8 for knockout?
+    BIG_WIN_THRESHOLD = 7.5 # 5.25 for group stage, 8 for knockout?
 
     WIN = (1,0) # (2,1) for group stage, (1,0) for knockout stage # TODO: detect if knockout
     BIG_WIN = (2,0)

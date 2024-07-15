@@ -56,12 +56,16 @@ def log_in(browser: RoboBrowser):
     while len(password) == 0:
         print('Password cannot be empty. Try again')
         password = getpass.getpass()
-        
+
     browser.open(URL_LOGIN)
     login_form = browser.get_form(LOGIN_FORM['id'])
-    login_form[LOGIN_FORM['username']] = username
-    login_form[LOGIN_FORM['password']] = password
-    browser.submit_form(login_form)
+    if login_form:
+        login_form[LOGIN_FORM['username']] = username
+        login_form[LOGIN_FORM['password']] = password
+
+        browser.submit_form(login_form)
+    else:
+        raise Exception("Could not get login form")
 
     login_success = browser.find(class_=LOGIN_RETURN['success'])
     if not login_success:
@@ -98,8 +102,11 @@ def place_bets(browser: RoboBrowser, bets: dict[str, tuple[int, ...]]):
         home_goals_form = f'{GAME_BET_FORM}[{match_id}].{HOME_BET}'
         away_goals_form = f'{GAME_BET_FORM}[{match_id}].{AWAY_BET}'
 
-        bet_form[home_goals_form] = str(bets[match_id][0])
-        bet_form[away_goals_form] = str(bets[match_id][1])
+        if bet_form:
+            bet_form[home_goals_form] = str(bets[match_id][0])
+            bet_form[away_goals_form] = str(bets[match_id][1])
+        else:
+            raise Exception("Could not get bet submission form")
 
     browser.submit_form(bet_form, submit=BET_SUBMIT_BUTTON)
     bet_submit_respone = str(browser.response)
@@ -142,7 +149,7 @@ def main(arguments):
     if arguments.get_login_token:
         token = log_in(browser)
         print(token)
-        # TODO: Get login token and permanently store as environment variable 
+        # TODO: Get login token and permanently store as environment variable
         #os.environ['KICKTIPP'] = token
     elif arguments.use_login_token:
         token = arguments.use_login_token
@@ -153,19 +160,21 @@ def main(arguments):
 
         except KeyError as err:
             raise Exception('Login token not found in environment variables. Use --get-login-token first and store as KICKTIPP in system environment variables.') from err
-        
+
     else:
         token = log_in(browser)
-        print(token)
         #raise Exception('No input arguments given.') # TODO: Explain, which/how to use
-    
-    browser.session.cookies['login'] = token
+
+    if token:
+        browser.session.cookies['login'] = token
+    else:
+        raise Exception("No token found")
 
     # TODO: Get all communities
     browser.open(COMMUNITY_URL)
     communities = get_communities(browser)
     if not communities:
-        exit('No community found')
+        raise Exception('No community found')
 
     # TODO: Get bet season (tippsaison ID) - not needed?
     #BET_SEASON_ID = '2262212'  # <input type="hidden" name="tippsaisonId" value="2262212">
@@ -182,13 +191,13 @@ def main(arguments):
         # TODO: use deadline to check if game is bettable
         # TODO: use end_mode to adjust bets for 90 mins, extra time or penalties
         # TODO: use result mode to adjust bet to be result or tendency
-        
+
 
         browser.open(f'{URL}/{community}/{BET_SUBMISSION}')
         matchdays = get_matchdays(browser)
         for matchday in matchdays:
             browser.open(f'{URL}/{community}/{BET_SUBMISSION}?spieltagIndex={matchday}')
-            match_round = browser.find("div", class_="prevnextTitle").get_text()#match_round = 
+            match_round = browser.find("div", class_="prevnextTitle").get_text()#match_round =
 
             matchday_bets = {}
 
