@@ -2,7 +2,9 @@ import argparse
 import getpass
 import os
 
-from datetime import date
+# TODO: Only make bets that lie in the future
+#from datetime import date
+
 from predictor import Predictor
 from robobrowser import RoboBrowser
 
@@ -51,7 +53,7 @@ LOGIN_RETURN = {
     "error": "messagebox errors"
 }
 
-def log_in(browser: RoboBrowser):
+def log_in(browser: RoboBrowser) -> str:
     username = input("E-mail address:  ")
     print(username)
     while len(username) == 0 or "@" not in username or "." not in username:
@@ -85,7 +87,7 @@ def log_in(browser: RoboBrowser):
         return browser.session.cookies["login"]
 
 
-def get_communities(browser):
+def get_communities(browser: RoboBrowser) -> list[str]:
     c = [
         [cl["href"] for cl in cd.find_all("a", href=True)]
         for cd in browser.find(id=CONTENT)
@@ -99,7 +101,7 @@ def get_communities(browser):
     return cm
 
 
-def get_matchdays(browser):
+def get_matchdays(browser: RoboBrowser) -> list[str]:
     return [
         m["href"].split("=")[-1]
         for m in browser.find(id=CONTENT)
@@ -112,12 +114,12 @@ def get_matchdays(browser):
 # TODO: Decide if matchdays should be ints or strings (1 or '1'), so far str seems fine
 
 
-def get_matches(browser):
+def get_matches(browser: RoboBrowser) -> list[list[any]]:
     # match_content = browser.find(id='tippabgabeSpiele').select('td[class="nw"]')
     return [tr.find_all("td") for tr in browser.find("tbody").find_all("tr")]
 
 
-def place_bets(browser: RoboBrowser, bets: dict[str, tuple[int, ...]]):
+def place_bets(browser: RoboBrowser, bets: dict[str, tuple[int, ...]]) -> bool:
     bet_form = browser.get_form(BET_SUBMISSION_FORM)
 
     for match_id in bets:
@@ -138,11 +140,11 @@ def place_bets(browser: RoboBrowser, bets: dict[str, tuple[int, ...]]):
         return False
 
 
-def get_rules(browser: RoboBrowser):
+def get_rules(browser: RoboBrowser) -> any:
     return browser.find(id=CONTENT)
 
 
-def get_deadline(browser: RoboBrowser):  # Minutes
+def get_deadline(browser: RoboBrowser) -> int: # Minutes
     rules = get_rules(browser)
     deadline = int(
         rules.find("h2", string=lambda t: DEADLINE_RULE in t.string).text.split(" ")[1]
@@ -150,27 +152,27 @@ def get_deadline(browser: RoboBrowser):  # Minutes
     return deadline
 
 
-def get_mode(browser: RoboBrowser):
+def get_mode(browser: RoboBrowser) -> list[any]:
     rules = get_rules(browser)
     # mode = rules.find('p', string = lambda t: RESULT_HEADER in t.string)
     mode = [rules.find_all("p")[i] for i in [1, 2]]
     return mode
 
 
-def get_end_mode(browser):
+def get_end_mode(browser: RoboBrowser) -> str:
     mode = get_mode(browser)
     end_mode = mode[1].find("b").text
     return end_mode
 
 
 # Not yet used
-def get_result_mode(browser):
+def get_result_mode(browser: RoboBrowser) -> str:
     mode = get_mode(browser)
     end_mode = mode[0].find("b").text
     return end_mode
 
 
-def get_point_mode(browser: RoboBrowser):
+def get_point_mode(browser: RoboBrowser) -> str:
     rules = get_rules(browser)
     # Find the <h2> that starts with "Punkteregel"
     point_h2 = None
@@ -187,7 +189,7 @@ def get_point_mode(browser: RoboBrowser):
     return points_rule
 
 
-def parse_points_table(browser: RoboBrowser):
+def parse_points_table(browser: RoboBrowser) -> dict[str, list[int]]:
     rules = get_rules(browser)
     points = {}
     for row in rules.find("tbody").find_all("tr"):
@@ -209,10 +211,9 @@ def parse_points_table(browser: RoboBrowser):
     # If only "home" is present, use it for both home and away (no_bias case)
     if "home" in points and "away" not in points:
         points["away"] = points["home"]
-    print(points)
     return points
 
-def main(arguments):
+def main(arguments: argparse.Namespace) -> None:
     browser = RoboBrowser(parser="html5lib")
 
     # TODO: Isolate in own module?
@@ -303,7 +304,7 @@ def main(arguments):
                 except (
                     IndexError
                 ) as err:  # Matchdays where no odds are available at all
-                    #print(f'No odds found for {match_round} in match {home} vs. {away} on {match_time}. Skipped.')
+                    print(f'No odds found for {match_round} in match {home} vs. {away} on {match_time}. Skipped.')
                     match_odds = "N/A"
                     match_bet = ("-", "-")
                 except (
