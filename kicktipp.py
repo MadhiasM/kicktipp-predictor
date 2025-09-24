@@ -40,10 +40,16 @@ POINTS_RULE = {
     "Punkteregel: 2 - 6 Punkte": "away_bias",
 }
 
-LOGIN_FORM = {"username": "kennung", "password": "passwort", "id": "loginFormular"}
+LOGIN_FORM = {
+    "username": "kennung",
+    "password": "passwort",
+    "id": "loginFormular"
+}
 
-LOGIN_RETURN = {"success": "messagebox success", "error": "messagebox errors"}
-
+LOGIN_RETURN = {
+    "success": "messagebox success",
+    "error": "messagebox errors"
+}
 
 def log_in(browser: RoboBrowser):
     username = input("E-mail address:  ")
@@ -166,10 +172,45 @@ def get_result_mode(browser):
 
 def get_point_mode(browser: RoboBrowser):
     rules = get_rules(browser)
-    points = rules.find_all("h2")[4].get_text()
-    points_rule = POINTS_RULE[points]
+    # Find the <h2> that starts with "Punkteregel"
+    point_h2 = None
+    for h2 in rules.find_all("h2"):
+        if h2.get_text().strip().startswith("Punkteregel"):
+            point_h2 = h2
+            break
+    if not point_h2:
+        raise Exception("Could not find Punkteregel header")
+    points = point_h2.get_text().strip()
+    points_rule = POINTS_RULE.get(points)
+    if not points_rule:
+        raise Exception(f"Unknown points rule: {points}")
     return points_rule
 
+
+def parse_points_table(browser: RoboBrowser):
+    rules = get_rules(browser)
+    points = {}
+    for row in rules.find("tbody").find_all("tr"):
+        cells = row.find_all("td")
+        label = cells[0].get_text(strip=True).lower()
+        if "heimsieg" in label or "sieg" == label:
+            key = "home"
+        elif "auswärtssieg" in label:
+            key = "away"
+        elif "unentschieden" in label:
+            key = "draw"
+        else:
+            continue
+        pts = []
+        for cell in cells[1:]:
+            val = cell.get_text(strip=True)
+            pts.append(int(val) if val.isdigit() else 0)
+        points[key] = pts
+    # If only "home" is present, use it for both home and away (no_bias case)
+    if "home" in points and "away" not in points:
+        points["away"] = points["home"]
+    print(points)
+    return points
 
 def main(arguments):
     browser = RoboBrowser(parser="html5lib")
@@ -219,6 +260,7 @@ def main(arguments):
         # end_mode = get_end_mode(browser)
         # result_mode = get_result_mode(browser)
         point_mode = get_point_mode(browser)
+        points = parse_points_table(browser)
         # TODO: use deadline to check if game is bettable
         # TODO: use end_mode to adjust bets for 90 mins, extra time or penalties
         # TODO: use result mode to adjust bet to be result or tendency
@@ -243,10 +285,8 @@ def main(arguments):
                 away = match[2].get_text()
 
                 if match[3].get("class")[0] == NOT_BETTABLE:
-                    print(
-                        f"{match_time}\n{home} vs. {away}\nOdds (H/D/A): N/A\nPredicted bet: Not bettable, maybe game lies in the past\n"
-                    )
-                    # print(match[3].get('class')[0])
+                    print(f"{match_time}\n{home} vs. {away}\nOdds (H/D/A): N/A\nPredicted bet: Not bettable, maybe game lies in the past\n")
+                    #print(match[3].get('class')[0])
                     continue
                 match_id = match[3].find_all("input")[0].get("id").split("_")[1]
                 # match_name = match[3].find_all('input')[0].get('name')  # TODO: Remove if not needed
@@ -263,7 +303,7 @@ def main(arguments):
                 except (
                     IndexError
                 ) as err:  # Matchdays where no odds are available at all
-                    # print(f'No odds found for {match_round} in match {home} vs. {away} on {match_time}. Skipped.')
+                    #print(f'No odds found for {match_round} in match {home} vs. {away} on {match_time}. Skipped.')
                     match_odds = "N/A"
                     match_bet = ("-", "-")
                 except (
@@ -275,22 +315,18 @@ def main(arguments):
                     # match_bet = ('2','1')
                     # matchday_bets[match_id] = match_bet
                 else:
-                    match_predictor = Predictor(mode=point_mode)
+                    match_predictor = Predictor(mode=point_mode, points=points)
                     match_bet = match_predictor.forecast(match_odds)
                     matchday_bets[match_id] = match_bet
 
-                print(
-                    f"{match_time}\n{home} vs. {away}\nOdds (H/D/A): {match_odds}\nForecast bet: {match_bet[0]}:{match_bet[1]}\n"
-                )
+                print(f"{match_time}\n{home} vs. {away}\nOdds (H/D/A): {match_odds}\nForecast bet: {match_bet[0]}:{match_bet[1]}\n")
             if matchday_bets:
                 bets_placed = place_bets(browser, matchday_bets)
                 if not bets_placed:
                     print(f"Could not place bets for {match_round}\n")
             else:
                 print(f"No odds found for matchday {match_round}")
-            print(
-                f"{len(matchday_bets)} out of {len(matches)} bets for {match_round} placed.\n"
-            )  # TODO: Show how many bets are placed
+            print(f"{len(matchday_bets)} out of {len(matches)} bets for {match_round} placed.\n")  # TODO: Show how many bets are placed
 
 
 if __name__ == "__main__":
