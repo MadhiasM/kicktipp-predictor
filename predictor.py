@@ -1,11 +1,12 @@
 class Predictor:
     DRAW_THRESHOLD = 2.25  # Not to be used in knock out phase if result after extra time + penalties is used in the rules
     BIG_WIN_THRESHOLD = 7.5  # 5.25 for group stage, 8 for knockout?
-
+    HUGE_WIN_THRESHOLD = 18  # 18-20 seems about right for a 3:0
     WIN = (
         2,
         1,
     )  # (2,1) for group stage, (1,0) for knockout stage # TODO: detect if knockout
+    HUGE_WIN = (3, 0)
     BIG_WIN = (2, 0)
     DRAW = (
         0,
@@ -32,43 +33,22 @@ class Predictor:
         ) / len(self.points["home"])
 
     def forecast(self, odds: list):
-        if self.mode == "no_bias":
-            return self.forecast_no_bias(odds)
-        elif self.mode == "away_bias":
-            return self.forecast_away_bias(odds)
+        home_odds, draw_odds, away_odds = odds
+        diff = home_odds - away_odds
 
-    def forecast_no_bias(
-        self, odds: list
-    ):  # TODO: replace home, away, odds by a class Match
-        diff = odds[0] - odds[2]
-
-        if odds[1] < self.DRAW_THRESHOLD:
+        if draw_odds < self.DRAW_THRESHOLD:
             return self.DRAW
-        elif abs(diff) < self.BIG_WIN_THRESHOLD:
-            result = self.WIN
-        else:
-            result = self.BIG_WIN
-
-        return result if diff < 0 else tuple(reversed(result))
-
-    def forecast_away_bias(
-        self, odds: list
-    ):  # TODO: replace home, away, odds by a class Match
-        # TODO: Refactor home draw and away odds outside of the function, maybe into __init__
-        home_odds = odds[0]
-        draw_odds = odds[1]
-        away_odds = odds[2]
-
-        diff = odds[0] - odds[2]
-
-        # If away odds are below the bias threshold, bet on away team even if the odd is higher
-        if away_odds < home_odds * self.bias:
-            if draw_odds < self.DRAW_THRESHOLD:
-                return tuple(reversed(self.DRAW))
-            elif abs(diff) < self.BIG_WIN_THRESHOLD:
+        elif away_odds < home_odds * self.bias:
+            # Favor away win
+            if abs(diff) < self.BIG_WIN_THRESHOLD:
                 return tuple(reversed(self.WIN))
-            else:
+            elif abs(diff) < self.HUGE_WIN_THRESHOLD:
                 return tuple(reversed(self.BIG_WIN))
+            else:
+                return tuple(reversed(self.HUGE_WIN))
+        elif abs(diff) < self.BIG_WIN_THRESHOLD:
+            return self.WIN
+        elif abs(diff) < self.HUGE_WIN_THRESHOLD:
+            return self.BIG_WIN
         else:
-            # Fallback to no_bias logic
-            return self.forecast_no_bias(odds)
+            return self.HUGE_WIN
