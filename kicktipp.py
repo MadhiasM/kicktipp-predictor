@@ -293,14 +293,8 @@ def main(arguments: argparse.Namespace) -> None:
                 # match_name = match[3].find_all('input')[0].get('name')  # TODO: Remove if not needed
                 try:
                     # Home, draw, away odds
-                    match_odds = [
-                        float(o)
-                        for o in match[4]
-                        .get_text()
-                        .strip("Quote: ")
-                        .replace("/", "")
-                        .split("  ")
-                    ]
+                    match_odds = [float(el.get_text(strip=True))
+                        for el in match[4].select("span.quote-text")]
                 except (
                     IndexError
                 ) as err:  # Matchdays where no odds are available at all
