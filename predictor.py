@@ -37,20 +37,23 @@ class Predictor:
     def forecast(self, odds: list[float]) -> tuple[int, int]:
         home_odds, draw_odds, away_odds = odds
 
-        home_score = home_odds
-        draw_score = draw_odds / self.draw_bias
-        away_score = away_odds / self.away_bias
+        home_weighted_odds = home_odds
+        draw_weighted_odds = draw_odds / self.draw_bias
+        away_weighted_odds = away_odds / self.away_bias
 
 
-        if draw_score <= min(home_score, away_score):
+        if draw_weighted_odds <= min(home_weighted_odds, away_weighted_odds):
             return self.DRAW
 
-        odds_diff = home_odds - away_odds
-        mag_diff = abs(odds_diff)
+        # Used to determine the height of the win bet, but not to determine if home or away should win
+        mag_diff = abs(home_odds - away_odds)
         base = (
             self.WIN if mag_diff < self.BIG_WIN_THRESHOLD else
             self.BIG_WIN if mag_diff < self.HUGE_WIN_THRESHOLD else
             self.HUGE_WIN
         )
 
-        return base if odds_diff < 0 else (base[1], base[0])
+        # Used to determine if home or away should win, but not to determine the height of the win bet
+        weighted_odds_diff = home_weighted_odds - away_weighted_odds
+
+        return base if weighted_odds_diff < 0 else (base[1], base[0])
