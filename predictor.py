@@ -13,12 +13,12 @@ class Predictor:
         "no_bias": {
             "home": [4, 3, 2],
             "away": [4, 3, 2],
-            "draw": [6, 4, 4] # Not used currently, but there for completeness. Note that technically, there are only 2 variants for a draw, but the difference is added here for completeness
+            "draw": [4, 2, 2]
         },
         "away_bias": {
             "home": [4, 3, 2],
             "away": [6, 5, 4],
-            "draw": [6, 4, 4] # Not used currently, but there for completeness. Note that technically, there are only 2 variants for a draw, but the difference is added here for completeness
+            "draw": [6, 4, 4]
         }
     }
 
@@ -35,7 +35,10 @@ class Predictor:
         ) / 2
 
     def forecast(self, odds: list[float]) -> tuple[int, int]:
-        home_odds, draw_odds, away_odds = odds
+        if odds is None or len(odds) != 3:
+            return self.WIN # If no odds are available, bet 2:1 on home team as default
+        else:
+            home_odds, draw_odds, away_odds = odds
 
         home_weighted_odds = home_odds
         draw_weighted_odds = draw_odds / self.draw_bias
