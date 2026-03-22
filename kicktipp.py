@@ -4,6 +4,8 @@ import os
 
 # TODO: Only make bets that lie in the future
 #from datetime import date
+import werkzeug
+werkzeug.cached_property = werkzeug.utils.cached_property
 
 from predictor import Predictor
 from robobrowser import RoboBrowser
